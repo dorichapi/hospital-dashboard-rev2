@@ -58,83 +58,44 @@
     const apiUrl = "https://script.google.com/macros/s/AKfycbyNH-T09dR6YNeNdb_7R1YSoGldLoAukQOabL0rmdv-Ugcomi5FYS-4pqSPqXzhPrM/exec";
 
     async function fetchData() {
-        try {
-            const response = await fetch(apiUrl);
-            const result = await response.json();
-            const latestData = result.data[result.data.length - 1];
+    try {
+        const response = await fetch(apiUrl);
+        const result = await response.json();
+        const latestData = result.data[result.data.length - 1];
 
-            // ✅ 日付と更新時刻の表示
-            document.getElementById("latest-date").innerText = `日付: ${formatDate(latestData["日付"])}`;
-            document.getElementById("update-time").innerText = `更新: ${formatTime(result.lastEditTime)}`;
+        // ✅ 日付と更新時刻の表示
+        const dateElement = document.getElementById("latest-date");
+        const updateTimeElement = document.getElementById("update-time");
 
-            // ✅ 各項目のデータ表示
-            document.getElementById("bed-usage").querySelector(".value").innerText = `${(latestData["病床利用率 (%)"] * 100).toFixed(1)}%`;
-            document.getElementById("ambulance").querySelector(".value").innerText = latestData["救急車搬入数"] || "--";
-            document.getElementById("inpatients").querySelector(".value").innerText = latestData["入院患者数"] || "--";
-            document.getElementById("discharges").querySelector(".value").innerText = latestData["退院予定数"] || "--";
-            document.getElementById("general-ward").querySelector(".value").innerText = `${latestData["一般病棟在院数"] || "--"}/218 床`;
-            document.getElementById("icu").querySelector(".value").innerText = `${latestData["集中治療室在院数"] || "--"}/16 床`;
+        console.log("✅ dateElement:", dateElement);
+        console.log("✅ updateTimeElement:", updateTimeElement);
 
-            // ✅ グラフ描画
-            const labels = result.data.map(item => formatDate(item["日付"]));
-            createChart("bedChart", "病床利用率 (%)", labels, result.data.map(item => item["病床利用率 (%)"] * 100), "blue", "％");
-            createChart("ambulanceChart", "救急車搬入数", labels, result.data.map(item => item["救急車搬入数"]), "red", "台");
-            createChart("inpatientsChart", "入院患者数", labels, result.data.map(item => item["入院患者数"]), "green", "人");
-            createChart("dischargesChart", "退院予定数", labels, result.data.map(item => item["退院予定数"]), "orange", "人");
-
-        } catch (error) {
-            console.error("❌ エラー発生:", error);
+        if (dateElement) {
+            dateElement.innerText = `日付: ${formatDate(latestData["日付"])}`;
         }
+
+        if (updateTimeElement && result.lastEditTime) {  // ✅ null チェック追加
+            updateTimeElement.innerText = `更新: ${formatTime(result.lastEditTime)}`;
+        } else {
+            console.warn("⚠️ update-time が見つからないか、lastEditTime が存在しません。");
+        }
+
+        // ✅ 各項目のデータ表示
+        document.getElementById("bed-usage").querySelector(".value").innerText = `${(latestData["病床利用率 (%)"] * 100).toFixed(1)}%`;
+        document.getElementById("ambulance").querySelector(".value").innerText = latestData["救急車搬入数"] || "--";
+        document.getElementById("inpatients").querySelector(".value").innerText = latestData["入院患者数"] || "--";
+        document.getElementById("discharges").querySelector(".value").innerText = latestData["退院予定数"] || "--";
+        document.getElementById("general-ward").querySelector(".value").innerText = `${latestData["一般病棟在院数"] || "--"}/218 床`;
+        document.getElementById("icu").querySelector(".value").innerText = `${latestData["集中治療室在院数"] || "--"}/16 床`;
+
+        // ✅ グラフ描画
+        const labels = result.data.map(item => formatDate(item["日付"]));
+        createChart("bedChart", "病床利用率 (%)", labels, result.data.map(item => item["病床利用率 (%)"] * 100), "blue", "％");
+        createChart("ambulanceChart", "救急車搬入数", labels, result.data.map(item => item["救急車搬入数"]), "red", "台");
+        createChart("inpatientsChart", "入院患者数", labels, result.data.map(item => item["入院患者数"]), "green", "人");
+        createChart("dischargesChart", "退院予定数", labels, result.data.map(item => item["退院予定数"]), "orange", "人");
+
+    } catch (error) {
+        console.error("❌ エラー発生:", error);
     }
-
-    // ✅ 日付フォーマット関数（例: 2月7日）
-    function formatDate(date) {
-        const d = new Date(date);
-        return `${d.getMonth() + 1}月${d.getDate()}日`;
-    }
-
-    // ✅ 時刻フォーマット関数（例: 18:43）
-    function formatTime(dateString) {
-        const date = new Date(dateString);
-        if (isNaN(date.getTime())) return "--:--";
-        const hours = date.getHours().toString().padStart(2, '0');
-        const minutes = date.getMinutes().toString().padStart(2, '0');
-        return `${hours}:${minutes}`;
-    }
-
-    // ✅ グラフ描画関数（個別グラフ表示対応）
-    function createChart(canvasId, label, labels, data, color, unit) {
-        new Chart(document.getElementById(canvasId), {
-            type: "line",
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: label,
-                    data: data,
-                    borderColor: color,
-                    backgroundColor: color,
-                    fill: false,
-                    tension: 0.4  // ✅ 線の滑らかさを調整
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: unit
-                        }
-                    }
-                }
-            }
-        });
-    }
-
-    fetchData();
-    </script>
-
-</body>
-</html>
+}
