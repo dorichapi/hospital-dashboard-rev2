@@ -8,9 +8,8 @@
     <style>
         body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
         .date-display { font-size: 2em; font-weight: bold; margin: 20px 0; color: #333; }
-        .update-time { font-size: 1em; color: #666; margin-left: 10px; }  
         .dashboard { display: flex; justify-content: space-around; margin-top: 20px; flex-wrap: wrap; }
-        .card { padding: 15px; border-radius: 5px; box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1); width: 22%; background: #f9f9f9; position: relative; }
+        .card { padding: 15px; border-radius: 5px; box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1); width: 22%; background: #f9f9f9; }
         .title { font-weight: bold; font-size: 1.4em; margin-bottom: 5px; }
         .value { font-size: 2.2em; }
         canvas { width: 100% !important; height: 200px !important; margin-top: 20px; }
@@ -19,15 +18,33 @@
 <body>
 
     <h1>病院経営ダッシュボード</h1>
-    <div class="date-display" id="latest-date">日付: -- <span class="update-time" id="update-time"></span></div> 
+    <div class="date-display" id="latest-date">日付: --</div>
 
     <div class="dashboard">
-        <div class="card" id="bed-usage"><div class="title">病床利用率</div><div class="value">--%</div></div>
-        <div class="card" id="ambulance"><div class="title">救急車搬入</div><div class="value">--</div></div>
-        <div class="card" id="inpatients"><div class="title">入院患者</div><div class="value">--</div></div>
-        <div class="card" id="discharges"><div class="title">退院予定</div><div class="value">--</div></div>
-        <div class="card" id="general-ward"><div class="title">一般病棟在院数</div><div class="value">--/218 床</div></div>
-        <div class="card" id="icu"><div class="title">集中治療室在院数</div><div class="value">--/16 床</div></div>
+        <div class="card" id="bed-usage">
+            <div class="title">病床利用率</div>
+            <div class="value">--%</div>
+        </div>
+        <div class="card" id="ambulance">
+            <div class="title">救急車搬入</div>
+            <div class="value">--</div>
+        </div>
+        <div class="card" id="inpatients">
+            <div class="title">入院患者</div>
+            <div class="value">--</div>
+        </div>
+        <div class="card" id="discharges">
+            <div class="title">退院予定</div>
+            <div class="value">--</div>
+        </div>
+        <div class="card" id="general-ward">
+            <div class="title">一般病棟在院数</div>
+            <div class="value">--/218 床</div>
+        </div>
+        <div class="card" id="icu">
+            <div class="title">集中治療室在院数</div>
+            <div class="value">--/16 床</div>
+        </div>
     </div>
 
     <canvas id="bedChart"></canvas>
@@ -36,93 +53,87 @@
     <canvas id="dischargesChart"></canvas>
 
     <script>
-    const apiUrl = "https://script.google.com/macros/s/AKfycbyNH-T09dR6YNeNdb_7R1YSoGldLoAukQOabL0rmdv-Ugcomi5FYS-4pqSPqXzhPrM/exec";
+        const apiUrl = "https://script.google.com/macros/s/AKfycbyNH-T09dR6YNeNdb_7R1YSoGldLoAukQOabL0rmdv-Ugcomi5FYS-4pqSPqXzhPrM/exec";
 
-    async function fetchData() {
-        try {
-            const response = await fetch(apiUrl);
-            if (!response.ok) throw new Error(`APIエラー: ${response.status}`);
-            
-            const result = await response.json();
-            console.log("✅ データ取得成功:", result); 
+        async function fetchData() {
+            try {
+                const response = await fetch(apiUrl);
+                const result = await response.json();
 
-            const latestData = result.data[result.data.length - 1];
-            if (!latestData) throw new Error("データが存在しません。");
+                console.log("✅ 取得したデータ:", result);  // ← デバッグ用
 
-            // ✅ 日付と更新時刻の表示
-            document.getElementById("latest-date").innerText = `日付: ${formatDate(latestData["日付"])}`;
-            document.getElementById("update-time").innerText = `更新: ${formatTime(result.lastEditTime)}`;
+                // データの確認
+                if (!result.data || !Array.isArray(result.data)) {
+                    console.error("❌ データ形式が不正です");
+                    return;
+                }
 
-            // ✅ 各項目のデータ表示
-            document.getElementById("bed-usage").querySelector(".value").innerText = 
-                `${(latestData["病床利用率 (%)"] * 100).toFixed(1) || "--"}%`;
-            document.getElementById("ambulance").querySelector(".value").innerText = 
-                latestData["救急車搬入数"] ?? "--";
-            document.getElementById("inpatients").querySelector(".value").innerText = 
-                latestData["入院患者数"] ?? "--";
-            document.getElementById("discharges").querySelector(".value").innerText = 
-                latestData["退院予定数"] ?? "--";
-            document.getElementById("general-ward").querySelector(".value").innerText = 
-                `${latestData["一般病棟在院数"] ?? "--"}/218 床`;
-            document.getElementById("icu").querySelector(".value").innerText = 
-                `${latestData["集中治療室在院数"] ?? "--"}/16 床`;
+                const latestData = result.data[result.data.length - 1];
 
-            // ✅ グラフ描画
-            const labels = result.data.map(item => formatDate(item["日付"]));
-            createChart("bedChart", "病床利用率 (%)", labels, result.data.map(item => (item["病床利用率 (%)"] * 100).toFixed(1)), "blue", "％");
-            createChart("ambulanceChart", "救急車搬入数", labels, result.data.map(item => item["救急車搬入数"]), "red", "台");
-            createChart("inpatientsChart", "入院患者数", labels, result.data.map(item => item["入院患者数"]), "green", "人");
-            createChart("dischargesChart", "退院予定数", labels, result.data.map(item => item["退院予定数"]), "orange", "人");
+                // 日付の表示
+                const dateElement = document.getElementById("latest-date");
+                if (dateElement) {
+                    dateElement.innerText = `日付: ${formatDate(latestData["日付"])}`;
+                }
 
-        } catch (error) {
-            console.error("❌ エラー発生:", error);
+                // データの表示
+                document.getElementById("bed-usage").querySelector(".value").innerText = `${(latestData["病床利用率 (%)"] * 100).toFixed(1)}%`;
+                document.getElementById("ambulance").querySelector(".value").innerText = latestData["救急車搬入数"] || "--";
+                document.getElementById("inpatients").querySelector(".value").innerText = latestData["入院患者数"] || "--";
+                document.getElementById("discharges").querySelector(".value").innerText = latestData["退院予定数"] || "--";
+                document.getElementById("general-ward").querySelector(".value").innerText = `${latestData["一般病棟在院数"] || "--"}/218 床`;
+                document.getElementById("icu").querySelector(".value").innerText = `${latestData["集中治療室在院数"] || "--"}/16 床`;
+
+                // グラフの描画
+                const labels = result.data.map(item => formatDate(item["日付"]));
+                createChart("bedChart", "病床利用率 (%)", labels, result.data.map(item => item["病床利用率 (%)"] * 100), "blue", "％");
+
+            } catch (error) {
+                console.error("❌ エラー発生:", error);
+            }
         }
-    }
 
-    // ✅ 日付フォーマット関数
-    function formatDate(date) {
-        const d = new Date(date);
-        return isNaN(d) ? "--" : `${d.getMonth() + 1}月${d.getDate()}日`;
-    }
+        function formatDate(date) {
+            const d = new Date(date);
+            return `${d.getMonth() + 1}月${d.getDate()}日`;
+        }
 
-    // ✅ 時刻フォーマット関数
-    function formatTime(dateString) {
-        const date = new Date(dateString);
-        if (isNaN(date)) return "--:--";
-        return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-    }
+        function createChart(canvasId, label, labels, data, color, unit) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) {
+                console.warn(`⚠️ キャンバスIDが見つかりません: ${canvasId}`);
+                return;
+            }
 
-    // ✅ グラフ描画関数
-    function createChart(canvasId, label, labels, data, color, unit) {
-        new Chart(document.getElementById(canvasId), {
-            type: "line",
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: label,
-                    data: data,
-                    borderColor: color,
-                    backgroundColor: color,
-                    fill: false
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: unit
+            new Chart(canvas, {
+                type: "line",
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: label,
+                        data: data,
+                        borderColor: color,
+                        backgroundColor: color,
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: unit
+                            }
                         }
                     }
                 }
-            }
-        });
-    }
+            });
+        }
 
-    fetchData();
+        fetchData();
     </script>
 
 </body>
