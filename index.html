@@ -16,7 +16,7 @@
 
         /* ✅ グラフを4列表示するスタイル */
         .chart-container { width: 23%; display: inline-block; margin: 10px 1%; vertical-align: top; }
-        canvas { width: 100% !important; height: 180px !important; }  /* 高さを180pxに調整 */
+        canvas { width: 100% !important; height: 180px !important; }
     </style>
 </head>
 <body>
@@ -35,15 +35,15 @@
         </div>
         <div class="card" id="ambulance">
             <div class="title">救急車搬入</div>
-            <div class="value">--</div>
+            <div class="value">--台</div>
         </div>
         <div class="card" id="inpatients">
             <div class="title">入院患者</div>
-            <div class="value">--</div>
+            <div class="value">--人</div>
         </div>
         <div class="card" id="discharges">
             <div class="title">退院予定</div>
-            <div class="value">--</div>
+            <div class="value">--人</div>
         </div>
         <div class="card" id="general-ward">
             <div class="title">一般病棟在院数</div>
@@ -60,8 +60,8 @@
     <div class="chart-container"><canvas id="ambulanceChart"></canvas></div>
     <div class="chart-container"><canvas id="inpatientsChart"></canvas></div>
     <div class="chart-container"><canvas id="dischargesChart"></canvas></div>
-    <div class="chart-container"><canvas id="generalWardChart"></canvas></div>  <!-- 一般病棟在院数 -->
-    <div class="chart-container"><canvas id="icuChart"></canvas></div>          <!-- 集中治療室在院数 -->
+    <div class="chart-container"><canvas id="generalWardChart"></canvas></div>
+    <div class="chart-container"><canvas id="icuChart"></canvas></div>
 
     <script>
     const apiUrl = "https://script.google.com/macros/s/AKfycby4XwDzmcDdVy0odJXbZpf3FApO_99SWYc0Wtg9fvisnz2tQYbGBGZzO6FR9piLAHgk/exec";
@@ -72,14 +72,15 @@
             const result = await response.json();
             const latestData = result.data[result.data.length - 1];
 
+            // ✅ 日付と更新時刻の表示
             document.getElementById("latest-date").textContent = `日付: ${formatDate(latestData["日付"])}`;
             document.getElementById("update-time").textContent = `更新: ${formatTime(result.lastEditTime)}`;
 
-            // ✅ 各データの表示
+            // ✅ 各データの表示（単位を追加）
             document.getElementById("bed-usage").querySelector(".value").textContent = `${(latestData["病床利用率 (%)"] * 100).toFixed(1)}%`;
-            document.getElementById("ambulance").querySelector(".value").textContent = latestData["救急車搬入数"] || "--";
-            document.getElementById("inpatients").querySelector(".value").textContent = latestData["入院患者数"] || "--";
-            document.getElementById("discharges").querySelector(".value").textContent = latestData["退院予定数"] || "--";
+            document.getElementById("ambulance").querySelector(".value").textContent = `${latestData["救急車搬入数"] || "--"}台`;
+            document.getElementById("inpatients").querySelector(".value").textContent = `${latestData["入院患者数"] || "--"}人`;
+            document.getElementById("discharges").querySelector(".value").textContent = `${latestData["退院予定数"] || "--"}人`;
             document.getElementById("general-ward").querySelector(".value").textContent = `${latestData["一般病棟在院数"] || "--"}/218 床`;
             document.getElementById("icu").querySelector(".value").textContent = `${latestData["集中治療室在院数"] || "--"}/16 床`;
 
@@ -88,7 +89,7 @@
             const labels = recentData.map(item => formatDateShort(item["日付"]));
 
             // ✅ グラフ表示
-            createChart("bedChart", "病床利用率 (%)", labels, recentData.map(item => item["病床利用率 (%)"] * 100), "blue", "％", 100);
+            createChart("bedChart", "病床利用率 (%)", labels, recentData.map(item => item["病床利用率 (%)"] * 100), "blue", "％", 110);
             createChart("ambulanceChart", "救急車搬入数", labels, recentData.map(item => item["救急車搬入数"]), "red", "台");
             createChart("inpatientsChart", "入院患者数", labels, recentData.map(item => item["入院患者数"]), "green", "人");
             createChart("dischargesChart", "退院予定数", labels, recentData.map(item => item["退院予定数"]), "orange", "人");
@@ -112,7 +113,7 @@
         return `${d.getMonth() + 1}/${d.getDate()}`;
     }
 
-    // ✅ 時刻フォーマット
+    // ✅ 正しい更新時刻の取得
     function formatTime(dateString) {
         const date = new Date(dateString);
         if (isNaN(date.getTime())) return "--:--";
@@ -142,7 +143,7 @@
                 scales: {
                     y: {
                         beginAtZero: true,
-                        max: maxY, // ✅ 最大値（病床利用率のみ100に設定）
+                        max: maxY,
                         title: {
                             display: true,
                             text: unit
