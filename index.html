@@ -8,13 +8,15 @@
     <style>
         body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
         .date-display { font-size: 1.8em; font-weight: bold; margin: 10px 0; color: #333; }
-        .update-time { font-size: 1em; color: #666; margin-left: 10px; } /* ✅ 更新時刻のスタイル */
-        .dashboard { display: flex; justify-content: space-around; margin-top: 10px; flex-wrap: wrap; }
-        .card { padding: 10px; border-radius: 5px; box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1); width: 22%; background: #f9f9f9; margin: 5px; }
+        .update-time { font-size: 1em; color: #666; margin-left: 10px; }
+        .dashboard { display: flex; justify-content: space-around; flex-wrap: wrap; gap: 10px; }
+        .card { padding: 10px; border-radius: 5px; box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1); width: 22%; background: #f9f9f9; }
         .title { font-weight: bold; font-size: 1.4em; margin-bottom: 5px; }
         .value { font-size: 2em; }
-        .chart-container { width: 48%; margin: 10px auto; } /* ✅ グラフを2列に並べる */
-        canvas { width: 100% !important; height: 200px !important; } /* ✅ グラフ高さを200pxに固定 */
+
+        /* ✅ グラフを4列表示するスタイル */
+        .chart-container { width: 23%; display: inline-block; margin: 10px 1%; vertical-align: top; }
+        canvas { width: 100% !important; height: 180px !important; }  /* 高さを180pxに調整 */
     </style>
 </head>
 <body>
@@ -23,7 +25,7 @@
 
     <div class="date-display">
         <span id="latest-date">日付: --</span>
-        <span class="update-time" id="update-time">更新: --:--</span> <!-- ✅ 更新時刻表示 -->
+        <span class="update-time" id="update-time">更新: --:--</span>
     </div>
 
     <div class="dashboard">
@@ -53,11 +55,13 @@
         </div>
     </div>
 
-    <!-- ✅ グラフを2列表示 -->
+    <!-- ✅ グラフ表示エリア -->
     <div class="chart-container"><canvas id="bedChart"></canvas></div>
     <div class="chart-container"><canvas id="ambulanceChart"></canvas></div>
     <div class="chart-container"><canvas id="inpatientsChart"></canvas></div>
     <div class="chart-container"><canvas id="dischargesChart"></canvas></div>
+    <div class="chart-container"><canvas id="generalWardChart"></canvas></div>  <!-- 一般病棟在院数 -->
+    <div class="chart-container"><canvas id="icuChart"></canvas></div>          <!-- 集中治療室在院数 -->
 
     <script>
     const apiUrl = "https://script.google.com/macros/s/AKfycbyNH-T09dR6YNeNdb_7R1YSoGldLoAukQOabL0rmdv-Ugcomi5FYS-4pqSPqXzhPrM/exec";
@@ -68,11 +72,10 @@
             const result = await response.json();
             const latestData = result.data[result.data.length - 1];
 
-            // ✅ 日付と更新時刻の表示
             document.getElementById("latest-date").textContent = `日付: ${formatDate(latestData["日付"])}`;
             document.getElementById("update-time").textContent = `更新: ${formatTime(result.lastEditTime)}`;
 
-            // ✅ 各項目のデータ表示
+            // ✅ 各データの表示
             document.getElementById("bed-usage").querySelector(".value").textContent = `${(latestData["病床利用率 (%)"] * 100).toFixed(1)}%`;
             document.getElementById("ambulance").querySelector(".value").textContent = latestData["救急車搬入数"] || "--";
             document.getElementById("inpatients").querySelector(".value").textContent = latestData["入院患者数"] || "--";
@@ -80,33 +83,36 @@
             document.getElementById("general-ward").querySelector(".value").textContent = `${latestData["一般病棟在院数"] || "--"}/218 床`;
             document.getElementById("icu").querySelector(".value").textContent = `${latestData["集中治療室在院数"] || "--"}/16 床`;
 
-            // ✅ 直近7日間のデータ取得
+            // ✅ 直近7日間のデータ
             const recentData = result.data.slice(-7);
             const labels = recentData.map(item => formatDateShort(item["日付"]));
 
-            createChart("bedChart", "病床利用率 (%)", labels, recentData.map(item => item["病床利用率 (%)"] * 100), "blue", "％");
+            // ✅ グラフ表示
+            createChart("bedChart", "病床利用率 (%)", labels, recentData.map(item => item["病床利用率 (%)"] * 100), "blue", "％", 100);
             createChart("ambulanceChart", "救急車搬入数", labels, recentData.map(item => item["救急車搬入数"]), "red", "台");
             createChart("inpatientsChart", "入院患者数", labels, recentData.map(item => item["入院患者数"]), "green", "人");
             createChart("dischargesChart", "退院予定数", labels, recentData.map(item => item["退院予定数"]), "orange", "人");
+            createChart("generalWardChart", "一般病棟在院数", labels, recentData.map(item => item["一般病棟在院数"]), "purple", "床");
+            createChart("icuChart", "集中治療室在院数", labels, recentData.map(item => item["集中治療室在院数"]), "teal", "床");
 
         } catch (error) {
             console.error("❌ エラー発生:", error);
         }
     }
 
-    // ✅ 日付フォーマット（例: 2月7日）
+    // ✅ 日付フォーマット
     function formatDate(date) {
         const d = new Date(date);
         return `${d.getMonth() + 1}月${d.getDate()}日`;
     }
 
-    // ✅ 短縮日付フォーマット（例: 2/7）
+    // ✅ 短縮日付フォーマット
     function formatDateShort(date) {
         const d = new Date(date);
         return `${d.getMonth() + 1}/${d.getDate()}`;
     }
 
-    // ✅ 時刻フォーマット（例: 18:43）
+    // ✅ 時刻フォーマット
     function formatTime(dateString) {
         const date = new Date(dateString);
         if (isNaN(date.getTime())) return "--:--";
@@ -115,8 +121,8 @@
         return `${hours}:${minutes}`;
     }
 
-    // ✅ グラフ描画
-    function createChart(canvasId, label, labels, data, color, unit) {
+    // ✅ グラフ描画関数
+    function createChart(canvasId, label, labels, data, color, unit, maxY = null) {
         new Chart(document.getElementById(canvasId), {
             type: "line",
             data: {
@@ -136,6 +142,7 @@
                 scales: {
                     y: {
                         beginAtZero: true,
+                        max: maxY, // ✅ 最大値（病床利用率のみ100に設定）
                         title: {
                             display: true,
                             text: unit
