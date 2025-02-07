@@ -74,6 +74,8 @@
                 const dateElement = document.getElementById("latest-date");
                 if (dateElement) {
                     dateElement.innerText = `日付: ${formatDate(latestData["日付"])}`;
+                    } else {
+                        console.warn("⚠️ 'latest-date' の要素が見つかりません。またはデータが無効です。");
                 }
 
                 // データの表示
