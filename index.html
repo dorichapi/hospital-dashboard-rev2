@@ -60,60 +60,61 @@
     </div>
 
     <script>
-    const apiUrl = "https://script.google.com/macros/s/AKfycbwEQ2je_6GfMUuIGco0G0DyWA8iyeSM-dKrcoOt3UoJAxazDg1EbgImvNqr7WiPNDUZ/exec"; // ✅ ここにGASのURLを挿入
+    const apiUrl = "https://script.google.com/macros/s/AKfycbxxBgUL7bnam1iF9PwFlEKGhLn6DUZBA5tHUcOd1xry9_td9_dsp8WhbgOAf9jxQO8Q/exec"; // ✅ ここにGASのURLを挿入
 
-    async function fetchData() {
-        try {
-            const response = await fetch(apiUrl);
-            const result = await response.json();
-            const latestData = result.data[result.data.length - 1];
+   async function fetchData() {
+    try {
+        const response = await fetch(apiUrl);
+        const result = await response.json();
+        const latestData = result.data[result.data.length - 1];
 
-            document.getElementById("latest-date").innerText = `日付: ${formatDate(latestData["日付"])}`;
+        document.getElementById("latest-date").innerText = `日付: ${formatDate(latestData["日付"])}`;
 
-            // ✅ 病床利用率を100倍し、小数点1桁に丸める
-            const bedUsageRate = (latestData["病床利用率 (%)"] * 100).toFixed(1);
-            document.getElementById("bed-usage").querySelector(".value").innerText = `${bedUsageRate}%`;
+        // ✅ 病床利用率の表示（100倍して1桁表示）
+        const bedUsageRate = (latestData["病床利用率 (%)"] * 100).toFixed(1);
+        document.getElementById("bed-usage").querySelector(".value").innerText = `${bedUsageRate}%`;
 
-            // ✅ 各データの表示
-            document.getElementById("ambulance").querySelector(".value").innerText = latestData["救急車搬入数"];
-            document.getElementById("inpatients").querySelector(".value").innerText = latestData["入院患者数"];
-            document.getElementById("discharges").querySelector(".value").innerText = latestData["退院予定数"];
-            document.getElementById("general-ward").querySelector(".value").innerText = `${latestData["一般病棟在院数"]}/218 床`;
-            document.getElementById("icu").querySelector(".value").innerText = `${latestData["集中治療室在院数"]}/16 床`;
+        // ✅ 各項目のデータ表示
+        document.getElementById("ambulance").querySelector(".value").innerText = latestData["救急車搬入数"];
+        document.getElementById("inpatients").querySelector(".value").innerText = latestData["入院患者数"];
+        document.getElementById("discharges").querySelector(".value").innerText = latestData["退院予定数"];
+        document.getElementById("general-ward").querySelector(".value").innerText = `${latestData["一般病棟在院数"]}/218 床`;
+        document.getElementById("icu").querySelector(".value").innerText = `${latestData["集中治療室在院数"]}/16 床`;
 
-            // ✅ 各項目の更新時刻表示（無効なデータは "--:--" を表示）
-            displayTime("bed-usage", latestData["病床利用率_更新時間"]);
-            displayTime("ambulance", latestData["救急車搬入数_更新時間"]);
-            displayTime("inpatients", latestData["入院患者数_更新時間"]);
-            displayTime("discharges", latestData["退院予定数_更新時間"]);
-            displayTime("general-ward", latestData["一般病棟在院数_更新時間"]);
-            displayTime("icu", latestData["集中治療室在院数_更新時間"]);
+        // ✅ 各項目の更新時刻表示（nullの場合は "--:--"）
+        displayTime("bed-usage", latestData["病床利用率_更新時間"]);
+        displayTime("ambulance", latestData["救急車搬入数_更新時間"]);
+        displayTime("inpatients", latestData["入院患者数_更新時間"]);
+        displayTime("discharges", latestData["退院予定数_更新時間"]);
+        displayTime("general-ward", latestData["一般病棟在院数_更新時間"]);
+        displayTime("icu", latestData["集中治療室在院数_更新時間"]);
 
-        } catch (error) {
-            console.error("❌ エラー発生:", error);
-        }
+    } catch (error) {
+        console.error("❌ エラー発生:", error);
     }
+}
 
-    // ✅ 日付フォーマット関数（例: 2月7日）
-    function formatDate(date) {
-        const d = new Date(date);
-        return `${d.getMonth() + 1}月${d.getDate()}日`;
-    }
+// ✅ 日付フォーマット関数（例: 2月7日）
+function formatDate(date) {
+    const d = new Date(date);
+    return `${d.getMonth() + 1}月${d.getDate()}日`;
+}
 
-    // ✅ 時刻フォーマット関数（例: 18:43）
-    function formatTime(date) {
-        if (isNaN(date.getTime())) return "--:--"; // ✅ 無効な日付データの場合
-        const hours = date.getHours().toString().padStart(2, '0');
-        const minutes = date.getMinutes().toString().padStart(2, '0');
-        return `${hours}:${minutes}`;
-    }
+// ✅ 時刻フォーマット関数（例: 18:43）
+function formatTime(dateString) {
+    if (!dateString) return "--:--"; // ✅ null または undefined の場合
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "--:--"; // ✅ 無効な日付データの処理
 
-    // ✅ 時刻表示を簡略化する関数
-    function displayTime(elementId, timeData) {
-        const timeElement = document.getElementById(elementId).querySelector(".timestamp");
-        const time = new Date(timeData);
-        timeElement.innerText = formatTime(time);
-    }
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
+}
 
-    fetchData();
-</script>
+// ✅ 各項目に時間を表示する関数
+function displayTime(elementId, timeData) {
+    const timeElement = document.getElementById(elementId).querySelector(".timestamp");
+    timeElement.innerText = formatTime(timeData);
+}
+
+fetchData();
