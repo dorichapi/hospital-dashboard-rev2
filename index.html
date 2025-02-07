@@ -8,56 +8,56 @@
     <style>
         body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
         .date-display { font-size: 2em; font-weight: bold; margin: 20px 0; color: #333; }
+        .update-time { font-size: 1em; color: #666; margin-left: 10px; }  /* ✅ アップデート時刻のスタイル */
         .dashboard { display: flex; justify-content: space-around; margin-top: 20px; flex-wrap: wrap; }
         .card { padding: 15px; border-radius: 5px; box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1); width: 22%; background: #f9f9f9; position: relative; }
         .title { font-weight: bold; font-size: 1.4em; margin-bottom: 5px; }
         .value { font-size: 2.2em; }
-        .timestamp { font-size: 0.9em; color: #666; margin-top: 5px; }
-        canvas { width: 100% !important; height: 200px !important; }
+        canvas { width: 100% !important; height: 200px !important; margin-top: 20px; }
     </style>
 </head>
 <body>
 
     <h1>病院経営ダッシュボード</h1>
-    <div class="date-display" id="latest-date">日付: --</div>
+    <div class="date-display" id="latest-date">日付: -- <span class="update-time" id="update-time"></span></div>  <!-- ✅ 更新時刻追加 -->
 
     <div class="dashboard">
         <div class="card" id="bed-usage">
             <div class="title">病床利用率</div>
             <div class="value">--%</div>
-            <div class="timestamp">--:--</div>
         </div>
 
         <div class="card" id="ambulance">
             <div class="title">救急車搬入</div>
             <div class="value">--</div>
-            <div class="timestamp">--:--</div>
         </div>
 
         <div class="card" id="inpatients">
             <div class="title">入院患者</div>
             <div class="value">--</div>
-            <div class="timestamp">--:--</div>
         </div>
 
         <div class="card" id="discharges">
             <div class="title">退院予定</div>
             <div class="value">--</div>
-            <div class="timestamp">--:--</div>
         </div>
 
         <div class="card" id="general-ward">
             <div class="title">一般病棟在院数</div>
             <div class="value">--/218 床</div>
-            <div class="timestamp">--:--</div>
         </div>
 
         <div class="card" id="icu">
             <div class="title">集中治療室在院数</div>
             <div class="value">--/16 床</div>
-            <div class="timestamp">--:--</div>
         </div>
     </div>
+
+    <!-- ✅ グラフエリア -->
+    <canvas id="bedChart"></canvas>
+    <canvas id="ambulanceChart"></canvas>
+    <canvas id="inpatientsChart"></canvas>
+    <canvas id="dischargesChart"></canvas>
 
     <script>
     const apiUrl = "https://script.google.com/macros/s/AKfycbylrovg1TaQMSYlshrYTvSUXOV02qBeRzb5pGIcN2mn7YVvB9XZTGlOP30SnzD06Unf/exec";
@@ -65,36 +65,27 @@
     async function fetchData() {
         try {
             const response = await fetch(apiUrl);
-            if (!response.ok) throw new Error("データ取得に失敗しました");
-
             const result = await response.json();
-            console.log("✅ 取得したデータ:", result);  // デバッグ用
-
             const latestData = result.data[result.data.length - 1];
-            if (!latestData) throw new Error("最新データが取得できません");
 
+            // ✅ 日付と更新時刻の表示
             document.getElementById("latest-date").innerText = `日付: ${formatDate(latestData["日付"])}`;
-
-            // ✅ 病床利用率の表示（100倍して1桁表示）
-            const bedUsageRate = latestData["病床利用率 (%)"] 
-                ? (latestData["病床利用率 (%)"] * 100).toFixed(1) 
-                : "--";
-            document.getElementById("bed-usage").querySelector(".value").innerText = `${bedUsageRate}%`;
+            document.getElementById("update-time").innerText = `更新: ${formatTime(result.lastEditTime)}`;
 
             // ✅ 各項目のデータ表示
+            document.getElementById("bed-usage").querySelector(".value").innerText = `${(latestData["病床利用率 (%)"] * 100).toFixed(1)}%`;
             document.getElementById("ambulance").querySelector(".value").innerText = latestData["救急車搬入数"] || "--";
             document.getElementById("inpatients").querySelector(".value").innerText = latestData["入院患者数"] || "--";
             document.getElementById("discharges").querySelector(".value").innerText = latestData["退院予定数"] || "--";
             document.getElementById("general-ward").querySelector(".value").innerText = `${latestData["一般病棟在院数"] || "--"}/218 床`;
             document.getElementById("icu").querySelector(".value").innerText = `${latestData["集中治療室在院数"] || "--"}/16 床`;
 
-            // ✅ 各項目の更新時刻表示（nullまたは無効な場合は "--:--"）
-            displayTime("bed-usage", latestData["病床利用率_更新時間"]);
-            displayTime("ambulance", latestData["救急車搬入数_更新時間"]);
-            displayTime("inpatients", latestData["入院患者数_更新時間"]);
-            displayTime("discharges", latestData["退院予定数_更新時間"]);
-            displayTime("general-ward", latestData["一般病棟在院数_更新時間"]);
-            displayTime("icu", latestData["集中治療室在院数_更新時間"]);
+            // ✅ グラフ描画
+            const labels = result.data.map(item => formatDate(item["日付"]));
+            createChart("bedChart", "病床利用率 (%)", labels, result.data.map(item => item["病床利用率 (%)"] * 100), "blue", "％");
+            createChart("ambulanceChart", "救急車搬入数", labels, result.data.map(item => item["救急車搬入数"]), "red", "台");
+            createChart("inpatientsChart", "入院患者数", labels, result.data.map(item => item["入院患者数"]), "green", "人");
+            createChart("dischargesChart", "退院予定数", labels, result.data.map(item => item["退院予定数"]), "orange", "人");
 
         } catch (error) {
             console.error("❌ エラー発生:", error);
@@ -103,26 +94,47 @@
 
     // ✅ 日付フォーマット関数（例: 2月7日）
     function formatDate(date) {
-        if (!date) return "--";
         const d = new Date(date);
         return `${d.getMonth() + 1}月${d.getDate()}日`;
     }
 
     // ✅ 時刻フォーマット関数（例: 18:43）
     function formatTime(dateString) {
-        if (!dateString) return "--:--";
         const date = new Date(dateString);
         if (isNaN(date.getTime())) return "--:--";
-
         const hours = date.getHours().toString().padStart(2, '0');
         const minutes = date.getMinutes().toString().padStart(2, '0');
         return `${hours}:${minutes}`;
     }
 
-    // ✅ 各項目に時間を表示する関数
-    function displayTime(elementId, timeData) {
-        const timeElement = document.getElementById(elementId).querySelector(".timestamp");
-        timeElement.innerText = formatTime(timeData);
+    // ✅ グラフ描画関数
+    function createChart(canvasId, label, labels, data, color, unit) {
+        new Chart(document.getElementById(canvasId), {
+            type: "line",
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: label,
+                    data: data,
+                    borderColor: color,
+                    backgroundColor: color,
+                    fill: false
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: unit
+                        }
+                    }
+                }
+            }
+        });
     }
 
     fetchData();
