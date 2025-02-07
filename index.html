@@ -7,13 +7,14 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
-        .date-display { font-size: 2em; font-weight: bold; margin: 20px 0; color: #333; }
+        .date-display { font-size: 1.8em; font-weight: bold; margin: 10px 0; color: #333; }
         .update-time { font-size: 1em; color: #666; margin-left: 10px; } /* ✅ 更新時刻のスタイル */
-        .dashboard { display: flex; justify-content: space-around; margin-top: 20px; flex-wrap: wrap; }
-        .card { padding: 15px; border-radius: 5px; box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1); width: 22%; background: #f9f9f9; }
+        .dashboard { display: flex; justify-content: space-around; margin-top: 10px; flex-wrap: wrap; }
+        .card { padding: 10px; border-radius: 5px; box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1); width: 22%; background: #f9f9f9; margin: 5px; }
         .title { font-weight: bold; font-size: 1.4em; margin-bottom: 5px; }
-        .value { font-size: 2.2em; }
-        canvas { width: 100% !important; height: 300px !important; margin: 10px 0; }
+        .value { font-size: 2em; }
+        .chart-container { width: 48%; margin: 10px auto; } /* ✅ グラフを2列に並べる */
+        canvas { width: 100% !important; height: 200px !important; } /* ✅ グラフ高さを200pxに固定 */
     </style>
 </head>
 <body>
@@ -22,7 +23,7 @@
 
     <div class="date-display">
         <span id="latest-date">日付: --</span>
-        <span class="update-time" id="update-time">更新: --:--</span>  <!-- ✅ 更新時刻表示 -->
+        <span class="update-time" id="update-time">更新: --:--</span> <!-- ✅ 更新時刻表示 -->
     </div>
 
     <div class="dashboard">
@@ -52,13 +53,11 @@
         </div>
     </div>
 
-    <!-- ✅ 個別グラフ -->
-    <div style="display: flex; flex-wrap: wrap; justify-content: space-around;">
-        <canvas id="bedChart"></canvas>
-        <canvas id="ambulanceChart"></canvas>
-        <canvas id="inpatientsChart"></canvas>
-        <canvas id="dischargesChart"></canvas>
-    </div>
+    <!-- ✅ グラフを2列表示 -->
+    <div class="chart-container"><canvas id="bedChart"></canvas></div>
+    <div class="chart-container"><canvas id="ambulanceChart"></canvas></div>
+    <div class="chart-container"><canvas id="inpatientsChart"></canvas></div>
+    <div class="chart-container"><canvas id="dischargesChart"></canvas></div>
 
     <script>
     const apiUrl = "https://script.google.com/macros/s/AKfycbyNH-T09dR6YNeNdb_7R1YSoGldLoAukQOabL0rmdv-Ugcomi5FYS-4pqSPqXzhPrM/exec";
@@ -70,16 +69,8 @@
             const latestData = result.data[result.data.length - 1];
 
             // ✅ 日付と更新時刻の表示
-            const dateElement = document.getElementById("latest-date");
-            const updateTimeElement = document.getElementById("update-time");
-
-            if (dateElement) {
-                dateElement.textContent = `日付: ${formatDate(latestData["日付"])}`;
-            }
-
-            if (updateTimeElement && result.lastEditTime) {
-                updateTimeElement.textContent = `更新: ${formatTime(result.lastEditTime)}`;
-            }
+            document.getElementById("latest-date").textContent = `日付: ${formatDate(latestData["日付"])}`;
+            document.getElementById("update-time").textContent = `更新: ${formatTime(result.lastEditTime)}`;
 
             // ✅ 各項目のデータ表示
             document.getElementById("bed-usage").querySelector(".value").textContent = `${(latestData["病床利用率 (%)"] * 100).toFixed(1)}%`;
@@ -89,25 +80,33 @@
             document.getElementById("general-ward").querySelector(".value").textContent = `${latestData["一般病棟在院数"] || "--"}/218 床`;
             document.getElementById("icu").querySelector(".value").textContent = `${latestData["集中治療室在院数"] || "--"}/16 床`;
 
-            // ✅ グラフ描画
-            const labels = result.data.map(item => formatDate(item["日付"]));
-            createChart("bedChart", "病床利用率 (%)", labels, result.data.map(item => item["病床利用率 (%)"] * 100), "blue", "％");
-            createChart("ambulanceChart", "救急車搬入数", labels, result.data.map(item => item["救急車搬入数"]), "red", "台");
-            createChart("inpatientsChart", "入院患者数", labels, result.data.map(item => item["入院患者数"]), "green", "人");
-            createChart("dischargesChart", "退院予定数", labels, result.data.map(item => item["退院予定数"]), "orange", "人");
+            // ✅ 直近7日間のデータ取得
+            const recentData = result.data.slice(-7);
+            const labels = recentData.map(item => formatDateShort(item["日付"]));
+
+            createChart("bedChart", "病床利用率 (%)", labels, recentData.map(item => item["病床利用率 (%)"] * 100), "blue", "％");
+            createChart("ambulanceChart", "救急車搬入数", labels, recentData.map(item => item["救急車搬入数"]), "red", "台");
+            createChart("inpatientsChart", "入院患者数", labels, recentData.map(item => item["入院患者数"]), "green", "人");
+            createChart("dischargesChart", "退院予定数", labels, recentData.map(item => item["退院予定数"]), "orange", "人");
 
         } catch (error) {
             console.error("❌ エラー発生:", error);
         }
     }
 
-    // ✅ 日付フォーマット関数
+    // ✅ 日付フォーマット（例: 2月7日）
     function formatDate(date) {
         const d = new Date(date);
         return `${d.getMonth() + 1}月${d.getDate()}日`;
     }
 
-    // ✅ 時刻フォーマット関数
+    // ✅ 短縮日付フォーマット（例: 2/7）
+    function formatDateShort(date) {
+        const d = new Date(date);
+        return `${d.getMonth() + 1}/${d.getDate()}`;
+    }
+
+    // ✅ 時刻フォーマット（例: 18:43）
     function formatTime(dateString) {
         const date = new Date(dateString);
         if (isNaN(date.getTime())) return "--:--";
@@ -116,7 +115,7 @@
         return `${hours}:${minutes}`;
     }
 
-    // ✅ グラフ描画関数
+    // ✅ グラフ描画
     function createChart(canvasId, label, labels, data, color, unit) {
         new Chart(document.getElementById(canvasId), {
             type: "line",
@@ -128,12 +127,12 @@
                     borderColor: color,
                     backgroundColor: color,
                     fill: false,
-                    tension: 0.3  // ✅ 線の滑らかさ
+                    tension: 0.3
                 }]
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false,
+                maintainAspectRatio: true,
                 scales: {
                     y: {
                         beginAtZero: true,
